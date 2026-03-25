@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal Chronicle Engine v4 — Visual Novel Prompt Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+Thai:wght@300;400;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void: #080810;
+    --bg-deep: #0d0d1a;
+    --bg-panel: #111120;
+    --bg-card: #16162a;
+    --bg-hover: #1e1e35;
+    --border: rgba(180,150,255,0.12);
+    --border-bright: rgba(180,150,255,0.35);
+    --accent: #b49eff;
+    --accent-warm: #e8a87c;
+    --accent-cold: #7cc8e8;
+    --accent-blood: #e87c7c;
+    --text-main: #e8e4f0;
+    --text-sub: #9090b0;
+    --text-dim: #555570;
+    --glow: rgba(180,150,255,0.15);
+    --glow-warm: rgba(232,168,124,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-main);
+    font-family: 'Noto Serif Thai', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background atmosphere */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(100,70,200,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 80% 90%, rgba(200,100,80,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 30% 30% at 50% 50%, rgba(80,120,200,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* HEADER */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.8s ease both;
+  }
+  .header-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    opacity: 0.7;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .header-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(22px, 4vw, 36px);
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-main);
+    text-shadow: 0 0 40px rgba(180,150,255,0.3);
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .header-title span { color: var(--accent); }
+  .header-sub {
+    font-size: 13px;
+    color: var(--text-sub);
+    font-weight: 300;
+    letter-spacing: 1px;
+  }
+  .header-divider {
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 20px auto 0;
+    opacity: 0.5;
+  }
+
+  /* SECTION WRAPPER */
+  .section {
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .section:nth-child(2) { animation-delay: 0.1s; }
+  .section:nth-child(3) { animation-delay: 0.2s; }
+  .section:nth-child(4) { animation-delay: 0.3s; }
+  .section:nth-child(5) { animation-delay: 0.4s; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+  .badge-config { background: rgba(180,150,255,0.1); color: var(--accent); border: 1px solid rgba(180,150,255,0.25); }
+  .badge-style { background: rgba(124,200,232,0.1); color: var(--accent-cold); border: 1px solid rgba(124,200,232,0.25); }
+  .badge-core { background: rgba(232,120,120,0.1); color: var(--accent-blood); border: 1px solid rgba(232,120,120,0.25); }
+  .badge-output { background: rgba(232,168,124,0.1); color: var(--accent-warm); border: 1px solid rgba(232,168,124,0.25); }
+
+  .section-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  /* CARD */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .card:hover {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 30px var(--glow);
+  }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media(max-width: 640px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* FORM FIELD */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+  .field-label.cold { color: var(--accent-cold); }
+  .field-label.warm { color: var(--accent-warm); }
+  .field-label.blood { color: var(--accent-blood); }
+
+  input[type="text"], textarea, select {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-main);
+    font-family: 'Noto Serif Thai', serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: rgba(180,150,255,0.5);
+    box-shadow: 0 0 12px rgba(180,150,255,0.1);
+  }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+  select { cursor: pointer; }
+  select option { background: var(--bg-panel); }
+
+  /* SLIDER ROW */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent) var(--pct, 50%), var(--bg-hover) var(--pct, 50%));
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(180,150,255,0.5);
+    cursor: pointer;
+  }
+  .slider-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* TOGGLE PILLS */
+  .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 5px 12px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: var(--bg-deep);
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .pill:hover { border-color: rgba(180,150,255,0.4); color: var(--text-main); }
+  .pill.active { background: rgba(180,150,255,0.15); border-color: rgba(180,150,255,0.6); color: var(--accent); }
+  .pill.active.cold { background: rgba(124,200,232,0.1); border-color: rgba(124,200,232,0.5); color: var(--accent-cold); }
+  .pill.active.warm { background: rgba(232,168,124,0.1); border-color: rgba(232,168,124,0.5); color: var(--accent-warm); }
+  .pill.active.blood { background: rgba(232,120,120,0.1); border-color: rgba(232,120,120,0.5); color: var(--accent-blood); }
+
+  /* WEATHER METER */
+  .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .weather-item { display: flex; flex-direction: column; gap: 8px; }
+  .weather-top { display: flex; justify-content: space-between; align-items: center; }
+  .weather-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--text-sub); }
+  .weather-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 400; }
+  .bar-track { height: 3px; background: var(--bg-hover); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .bar-fear .bar-fill { background: linear-gradient(90deg, #e87c7c, #c44); }
+  .bar-hope .bar-fill { background: linear-gradient(90deg, #7ce8a0, #4a8); }
+  .bar-suspicion .bar-fill { background: linear-gradient(90deg, #e8d47c, #a80); }
+  .bar-anger .bar-fill { background: linear-gradient(90deg, #e89c7c, #c60); }
+
+  /* OUTPUT BOX */
+  .output-wrapper {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .output-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+  }
+  .output-toolbar-left {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+  .output-toolbar-right { display: flex; gap: 8px; }
+  .btn-copy, .btn-reset {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 5px 14px;
+    border-radius: 2px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn-copy { border-color: rgba(180,150,255,0.4); background: rgba(180,150,255,0.08); color: var(--accent); }
+  .btn-copy:hover { background: rgba(180,150,255,0.18); box-shadow: 0 0 10px rgba(180,150,255,0.15); }
+  .btn-copy.copied { border-color: rgba(124,232,160,0.5); background: rgba(124,232,160,0.1); color: #7ce8a0; }
+  .btn-reset { border-color: rgba(232,120,120,0.3); background: rgba(232,120,120,0.06); color: var(--accent-blood); }
+  .btn-reset:hover { background: rgba(232,120,120,0.12); }
+
+  #prompt-output {
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.9;
+    color: #c8c8e8;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    cursor: text;
+  }
+  #prompt-output::-webkit-scrollbar { width: 4px; }
+  #prompt-output::-webkit-scrollbar-track { background: transparent; }
+  #prompt-output::-webkit-scrollbar-thumb { background: rgba(180,150,255,0.2); border-radius: 2px; }
+
+  /* GENERATE BUTTON */
+  .btn-generate {
+    width: 100%;
+    padding: 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, rgba(180,150,255,0.15), rgba(100,80,200,0.2));
+    border: 1px solid rgba(180,150,255,0.45);
+    color: var(--accent);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-generate::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255,255,255,0.03), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+  }
+  .btn-generate:hover {
+    background: linear-gradient(135deg, rgba(180,150,255,0.25), rgba(100,80,200,0.3));
+    box-shadow: 0 0 30px rgba(180,150,255,0.2), inset 0 0 20px rgba(180,150,255,0.05);
+    border-color: rgba(180,150,255,0.7);
+  }
+  .btn-generate:hover::before { transform: translateX(100%); }
+  .btn-generate:active { transform: scale(0.99); }
+
+  /* CORE PREVIEW (collapsed) */
+  .core-toggle {
+    width: 100%;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    color: var(--text-sub);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .core-toggle:hover { border-color: rgba(232,120,120,0.3); color: var(--accent-blood); }
+  .core-content {
+    display: none;
+    background: var(--bg-deep);
+    border: 1px solid rgba(232,120,120,0.15);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+  }
+  .core-content.open { display: block; }
+
+  /* SEPARATOR */
+  .sep {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+  }
+  .sep-line { flex: 1; height: 1px; background: var(--border); }
+  .sep-text { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--text-dim); }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    margin-top: 48px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* TOOLTIP hint */
+  .hint { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-style: italic; }
+
+  /* tag for required */
+  .req { color: var(--accent-blood); font-size: 9px; }
+
+  /* inline chips for theme suggestions */
+  .suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: rgba(180,150,255,0.4); color: var(--text-main); background: rgba(180,150,255,0.07); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-eyebrow">Visual Novel AI Prompt Builder</div>
+    <div class="header-title">Universal Chronicle <span>Engine v4</span></div>
+    <div class="header-sub">กำหนดโลก · บรรยายชีวิต · ไม่มีทางเลือกปลอดภัย</div>
+    <div class="header-divider"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 1: CUSTOMIZABLE CONFIG
+  ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-badge badge-config">🔧 Customizable Config</span>
+      <span class="section-note">เปลี่ยนได้ทั้งหมด</span>
+    </div>
+    <div class="card">
+
+      <!-- THEME -->
+      <div class="field" style="margin-bottom:20px">
+        <label class="field-label">THEME <span class="req">★</span></label>
+        <input type="text" id="cfg-theme" placeholder="เช่น โตเกียว ยุค 90s · ราชสำนักกลางวิกฤต · เมืองท่าในสงครามเย็น">
+        <div class="suggestions" id="theme-chips">
+          <span class="chip" data-field="cfg-theme" data-val="ราชสำนักสยาม ยุคเปลี่ยนผ่าน">ราชสำนักสยาม</span>
+          <span class="chip" data-field="cfg-theme" data-val="กรุงเทพ 2030 หลังน้ำท่วม">กรุงเทพ 2030</span>
+          <span class="chip" data-field="cfg-theme" data-val="หมู่บ้านเล็กในภูเขา มีความลับ">หมู่บ้านลับ</span>
+          <span class="chip" data-field="cfg-theme" data-val="เกาะกักกันในช่วงโรคระบาด">เกาะกักกัน</span>
+          <span class="chip" data-field="cfg-theme" data-val="บริษัทยักษ์ใหญ่กำลังล้ม">บริษัทล้มละลาย</span>
+          <span class="chip" data-field="cfg-theme" data-val="สงครามการเมืองในพรรคฝ่ายค้าน">การเมืองฝ่ายค้าน</span>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:20px">
+        <!-- REALITY LEVEL -->
+        <div class="field">
+          <label class="field-label">REALITY LEVEL</label>
+          <div class="pill-group" data-group="reality">
+            <span class="pill active" data-val="Cinematic">Cinematic</span>
+            <span class="pill" data-val="Realistic">Realistic</span>
+            <span class="pill" data-val="Brutal Realism">Brutal Realism</span>
+            <span class="pill" data-val="Surreal Realism">Surreal Realism</span>
+          </div>
+        </div>
+
+        <!-- SUPERNATURAL -->
+        <div class="field">
+          <label class="field-label">SUPERNATURAL DENSITY</label>
+          <div class="pill-group" data-group="supernatural">
+            <span class="pill active" data-val="None">None</span>
+            <span class="pill" data-val="Rare">Rare</span>
+            <span class="pill" data-val="Present">Present</span>
+            <span class="pill" data-val="Dominant">Dominant</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:20px">
+        <!-- TECH LEVEL -->
+        <div class="field">
+          <label class="field-label">TECH LEVEL</label>
+          <div class="pill-group" data-group="tech">
+            <span class="pill" data-val="Ancient">Ancient</span>
+            <span class="pill" data-val="Medieval">Medieval</span>
+            <span class="pill" data-val="Industrial">Industrial</span>
+            <span class="pill active" data-val="Modern">Modern</span>
+            <span class="pill" data-val="Futuristic">Futuristic</span>
+          </div>
+        </div>
+
+        <!-- VIOLENCE -->
+        <div class="field">
+          <label class="field-label">VIOLENCE INTENSITY</label>
+          <div class="pill-group" data-group="violence">
+            <span class="pill" data-val="Low">Low</span>
+            <span class="pill active" data-val="Moderate">Moderate</span>
+            <span class="pill" data-val="Graphic">Graphic</span>
+            <span class="pill" data-val="Unfiltered">Unfiltered</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIFE FOCUS RATIO -->
+      <div class="field" style="margin-bottom:20px">
+        <label class="field-label">LIFE FOCUS RATIO</label>
+        <div class="weather-grid" style="gap:12px">
+          <div>
+            <div class="weather-top">
+              <span class="weather-name">Daily Life</span>
+              <span class="weather-num" id="life-val" style="color:#7ce8a0">60%</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="life-ratio" min="20" max="80" value="60" oninput="updateLifeRatio(this)">
+            </div>
+            <div class="slider-labels"><span>20%</span><span>80%</span></div>
+          </div>
+          <div>
+            <div class="weather-top">
+              <span class="weather-name">Power / Plot</span>
+              <span class="weather-num" id="power-val" style="color:var(--accent)">40%</span>
+            </div>
+            <div class="bar-track" style="margin-top:14px">
+              <div class="bar-fill" id="power-bar" style="width:40%;background:linear-gradient(90deg,var(--accent),rgba(180,150,255,0.3))"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:20px">
+        <!-- CAMPAIGN LENGTH -->
+        <div class="field">
+          <label class="field-label">CAMPAIGN LENGTH</label>
+          <select id="cfg-campaign">
+            <option value="12 Episodes">12 Episodes</option>
+            <option value="Sandbox Open">Sandbox Open</option>
+            <option value="6 Episodes (Short Arc)">6 Episodes (Short Arc)</option>
+            <option value="20 Episodes (Epic)">20 Episodes (Epic)</option>
+            <option value="Custom">Custom…</option>
+          </select>
+        </div>
+
+        <!-- PRIMARY RESOURCE -->
+        <div class="field">
+          <label class="field-label">PRIMARY RESOURCE</label>
+          <input type="text" id="cfg-resource" placeholder="เช่น เงิน, ข้อมูลลับ, ความไว้วางใจ, เวลา">
+        </div>
+      </div>
+
+      <!-- POWER BLOCKS / THREAT -->
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="field">
+          <label class="field-label">MAIN POWER BLOCKS</label>
+          <textarea id="cfg-power" placeholder="เช่น ตระกูลเก่า vs นักธุรกิจใหม่ vs ขบวนการใต้ดิน"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label blood">EXISTENTIAL THREAT</label>
+          <textarea id="cfg-threat" placeholder="เช่น การล่มสลายของสถาบัน, ภัยธรรมชาติ, การทรยศจากภายใน"></textarea>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 2: PLAYER ARCHETYPE
+  ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-badge badge-config">👤 Player Archetype</span>
+      <span class="section-note">เปลี่ยนได้</span>
+    </div>
+    <div class="card">
+      <div class="grid-3" style="margin-bottom:20px">
+        <div class="field">
+          <label class="field-label">ARCHETYPE</label>
+          <select id="cfg-archetype">
+            <option value="">— เลือก —</option>
+            <option value="The Reluctant Heir">The Reluctant Heir</option>
+            <option value="The Outsider">The Outsider</option>
+            <option value="The Fallen Noble">The Fallen Noble</option>
+            <option value="The Idealist">The Idealist</option>
+            <option value="The Pragmatist">The Pragmatist</option>
+            <option value="The Survivor">The Survivor</option>
+            <option value="The Manipulator">The Manipulator</option>
+            <option value="The Protector">The Protector</option>
+            <option value="The Seeker">The Seeker</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">CORE DESIRE</label>
+          <input type="text" id="cfg-desire" placeholder="เช่น ปกป้องคนที่รัก, พิสูจน์ตนเอง">
+        </div>
+        <div class="field">
+          <label class="field-label blood">CORE CONTRADICTION</label>
+          <input type="text" id="cfg-contradiction" placeholder="เช่น ใจดีแต่ต้องใช้ความโหด">
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label warm">STARTING ATTACHMENT</label>
+        <input type="text" id="cfg-attachment" placeholder="คนหรือสิ่งที่ตัวละครรักมากที่สุดในตอนเริ่มต้น">
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 3: EMOTIONAL WEATHER
+  ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-badge badge-config">🌩 Emotional Weather</span>
+      <span class="section-note">เปลี่ยนได้ — ค่าเริ่มต้นสังคม</span>
+    </div>
+    <div class="card">
+      <div class="weather-grid">
+        <div class="weather-item">
+          <div class="weather-top">
+            <span class="weather-name">FEAR</span>
+            <span class="weather-num" id="fear-num" style="color:#e87c7c">50</span>
+          </div>
+          <input type="range" class="weather-range" id="fear" min="0" max="100" value="50" data-bar="fear">
+          <div class="bar-track"><div class="bar-fill bar-fear" id="bar-fear" style="width:50%"></div></div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-top">
+            <span class="weather-name">HOPE</span>
+            <span class="weather-num" id="hope-num" style="color:#7ce8a0">40</span>
+          </div>
+          <input type="range" class="weather-range" id="hope" min="0" max="100" value="40" data-bar="hope">
+          <div class="bar-track"><div class="bar-fill bar-hope" id="bar-hope" style="width:40%"></div></div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-top">
+            <span class="weather-name">SUSPICION</span>
+            <span class="weather-num" id="suspicion-num" style="color:#e8d47c">60</span>
+          </div>
+          <input type="range" class="weather-range" id="suspicion" min="0" max="100" value="60" data-bar="suspicion">
+          <div class="bar-track"><div class="bar-fill bar-suspicion" id="bar-suspicion" style="width:60%"></div></div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-top">
+            <span class="weather-name">ANGER</span>
+            <span class="weather-num" id="anger-num" style="color:#e89c7c">45</span>
+          </div>
+          <input type="range" class="weather-range" id="anger" min="0" max="100" value="45" data-bar="anger">
+          <div class="bar-track"><div class="bar-fill bar-anger" id="bar-anger" style="width:45%"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim)">
+        ⚠ ค่าเกิน 75 = สังคมเปลี่ยนพฤติกรรมรวม &nbsp;|&nbsp; ต่ำกว่า 25 = ความไม่มั่นคง
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 4: NARRATIVE STYLE
+  ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-badge badge-style">🎭 Narrative Style</span>
+      <span class="section-note">เปลี่ยนโทนได้</span>
+    </div>
+    <div class="card">
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="field">
+          <label class="field-label cold">PROSE DENSITY</label>
+          <div class="pill-group" data-group="prose">
+            <span class="pill cold" data-val="Lean">Lean</span>
+            <span class="pill cold active" data-val="Literary">Literary</span>
+            <span class="pill cold" data-val="Heavy Literary">Heavy Literary</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label cold">DIALOGUE STYLE</label>
+          <div class="pill-group" data-group="dialogue">
+            <span class="pill cold" data-val="Naturalistic">Naturalistic</span>
+            <span class="pill cold active" data-val="Subtext Heavy">Subtext Heavy</span>
+            <span class="pill cold" data-val="Political Sharp">Political Sharp</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="field">
+          <label class="field-label cold">PSYCHOLOGICAL DEPTH</label>
+          <div class="pill-group" data-group="psycho">
+            <span class="pill cold" data-val="Moderate">Moderate</span>
+            <span class="pill cold active" data-val="High">High</span>
+            <span class="pill cold" data-val="Extreme">Extreme</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label warm">ROMANCE INTENSITY</label>
+          <div class="pill-group" data-group="romance">
+            <span class="pill warm" data-val="Low">Low</span>
+            <span class="pill warm active" data-val="Medium">Medium</span>
+            <span class="pill warm" data-val="High">High</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label blood">TRAGEDY DRIFT</label>
+          <div class="pill-group" data-group="tragedy">
+            <span class="pill blood" data-val="Slow">Slow</span>
+            <span class="pill blood active" data-val="Medium">Medium</span>
+            <span class="pill blood" data-val="Inevitable">Inevitable</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 5: CORE ENGINE (ห้ามแก้)
+  ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-badge badge-core">🧠 Core Engine</span>
+      <span class="section-note" style="color:var(--accent-blood)">⛔ ห้ามแก้</span>
+    </div>
+    <button class="core-toggle" id="core-btn" onclick="toggleCore()">
+      <span>▶ Universal Chronicle Engine v4 — แสดง / ซ่อน Core Laws</span>
+      <span style="font-size:9px;opacity:0.5">NON-NEGOTIABLE</span>
+    </button>
+    <div class="core-content" id="core-content">I) CORE LAWS
+1. Third Person Omniscient ONLY
+   · เห็นแรงจูงใจทุกฝ่าย · Dramatic Irony · โลกเดินโดยไม่รอผู้เล่น
+
+2. ทุกการกระทำสร้างผล 5 ชั้น:
+   · Immediate Effect · Social Ripple · Power Shift
+   · Internal Psychological Cost · Hidden Countermove
+
+3. ไม่มีทางเลือกปลอดภัย / ไม่มีทางเลือกดีที่สุด / มีแต่ต้นทุนต่างกัน
+
+4. โลกตอบสนองต่อการกระทำ ไม่ใช่เจตนา
+
+─────────────────────────────────────────
+II) HIDDEN STATS (0–100 เริ่ม 50, ไม่เปิดตัวเลข)
+   Desire · Morality · Exposure · Control
+   Reputation · Psychological Strain · Attachment Load
+   75 = Crisis Shift | &lt;25 = Instability
+
+─────────────────────────────────────────
+III) DAILY LIFE INTEGRATION (บังคับทุกตอน ≥ 2 จาก):
+   การเงิน · สุขภาพ · งาน/หน้าที่ · ครอบครัว
+   ความรัก · ความเหนื่อยล้า · ข่าวลือ · ภาระส่วนตัว
+
+IV) ATTACHMENT LAW — Attachment = จุดอ่อน + แรงผลัก
+V) TIME DECAY — ไม่ดูแล = เสื่อม | การนิ่งคือการเลือก
+VI) ROMANCE — Timing / Priority / Vulnerability / Sacrifice
+VII) EMOTIONAL WEATHER — &gt;75 = สังคมเปลี่ยน
+
+─────────────────────────────────────────
+VIII) EPISODE FORMAT:
+[Episode X — ชื่อตอน]
+Recap → ชีวิตประจำวัน → แรงเสียดทาน → ความขัดแย้งภายใน
+→ Dramatic Irony → เหตุการณ์บีบ → ตัวเลือก 3–5 ทาง
+STATE SNAPSHOT: Stats / Relationship / Faction / Consequences
+
+IX) DIALOGUE — Subtext / ขัดจังหวะ / ไม่จบประโยค / หลีกเลี่ยง / Register Shift
+    ห้าม: อธิบายความรู้สึกตรง ๆ / สรุปธีม
+
+X) FATE — ขึ้นกับ Timing / Witness / Hidden State / Third Party / World Momentum
+   ห้ามพูดว่า "โชคดี" — โลกต้องมีชีวิตเอง</div>
+  </div>
+
+  <!-- GENERATE BUTTON -->
+  <button class="btn-generate" onclick="generatePrompt()">
+    ⬡ &nbsp; Generate Prompt &nbsp; ⬡
+  </button>
+
+  <!-- OUTPUT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-badge badge-output">📋 Output Prompt</span>
+      <span class="section-note">คัดลอกไปวางใน AI Chat ได้เลย</span>
+    </div>
+    <div class="output-wrapper">
+      <div class="output-toolbar">
+        <span class="output-toolbar-left">PROMPT · READY TO USE</span>
+        <div class="output-toolbar-right">
+          <button class="btn-reset" onclick="clearOutput()">CLEAR</button>
+          <button class="btn-copy" id="copy-btn" onclick="copyPrompt()">COPY</button>
+        </div>
+      </div>
+      <div id="prompt-output">กด Generate เพื่อสร้าง Prompt ที่พร้อมใช้งาน...</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Universal Chronicle Engine v4 &nbsp;·&nbsp; Visual Novel Edition &nbsp;·&nbsp; พิมพ์ "เริ่มเกม" เพื่อเปิดฉาก
+  </div>
+
+</div>
+
+<script>
+// ─── PILL TOGGLE ───────────────────────────────────────────
+document.querySelectorAll('.pill-group').forEach(group => {
+  group.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+});
+
+// ─── CHIP SHORTCUTS ────────────────────────────────────────
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const field = document.getElementById(chip.dataset.field);
+    if (field) field.value = chip.dataset.val;
+  });
+});
+
+// ─── WEATHER SLIDERS ───────────────────────────────────────
+document.querySelectorAll('.weather-range').forEach(range => {
+  range.addEventListener('input', () => {
+    const id = range.id;
+    const val = range.value;
+    document.getElementById(id + '-num').textContent = val;
+    document.getElementById('bar-' + id).style.width = val + '%';
+  });
+});
+
+// ─── LIFE RATIO ────────────────────────────────────────────
+function updateLifeRatio(el) {
+  const life = parseInt(el.value);
+  const power = 100 - life;
+  document.getElementById('life-val').textContent = life + '%';
+  document.getElementById('power-val').textContent = power + '%';
+  document.getElementById('power-bar').style.width = power + '%';
+  el.style.setProperty('--pct', life + '%');
+}
+
+// ─── CORE TOGGLE ───────────────────────────────────────────
+function toggleCore() {
+  const c = document.getElementById('core-content');
+  const b = document.getElementById('core-btn');
+  c.classList.toggle('open');
+  b.querySelector('span').textContent = c.classList.contains('open')
+    ? '▼ Universal Chronicle Engine v4 — แสดง / ซ่อน Core Laws'
+    : '▶ Universal Chronicle Engine v4 — แสดง / ซ่อน Core Laws';
+}
+
+// ─── GET PILL VALUE ─────────────────────────────────────────
+function getPill(group) {
+  const el = document.querySelector(`.pill-group[data-group="${group}"] .pill.active`);
+  return el ? el.dataset.val : '—';
+}
+
+// ─── GENERATE PROMPT ────────────────────────────────────────
+function generatePrompt() {
+  const theme = document.getElementById('cfg-theme').value.trim() || '(ยังไม่ระบุ)';
+  const reality = getPill('reality');
+  const supernatural = getPill('supernatural');
+  const tech = getPill('tech');
+  const violence = getPill('violence');
+  const lifeRatio = document.getElementById('life-ratio').value;
+  const powerRatio = 100 - parseInt(lifeRatio);
+  const campaign = document.getElementById('cfg-campaign').value;
+  const resource = document.getElementById('cfg-resource').value.trim() || '(ยังไม่ระบุ)';
+  const power = document.getElementById('cfg-power').value.trim() || '(ยังไม่ระบุ)';
+  const threat = document.getElementById('cfg-threat').value.trim() || '(ยังไม่ระบุ)';
+  const archetype = document.getElementById('cfg-archetype').value || '(ยังไม่ระบุ)';
+  const desire = document.getElementById('cfg-desire').value.trim() || '(ยังไม่ระบุ)';
+  const contradiction = document.getElementById('cfg-contradiction').value.trim() || '(ยังไม่ระบุ)';
+  const attachment = document.getElementById('cfg-attachment').value.trim() || '(ยังไม่ระบุ)';
+  const fear = document.getElementById('fear').value;
+  const hope = document.getElementById('hope').value;
+  const suspicion = document.getElementById('suspicion').value;
+  const anger = document.getElementById('anger').value;
+  const prose = getPill('prose');
+  const dialogue = getPill('dialogue');
+  const psycho = getPill('psycho');
+  const romance = getPill('romance');
+  const tragedy = getPill('tragedy');
+
+  const warnings = [];
+  if (parseInt(fear) > 75) warnings.push('⚠ FEAR > 75: สังคมเริ่มตื่นตระหนก');
+  if (parseInt(suspicion) > 75) warnings.push('⚠ SUSPICION > 75: ความไว้ใจพังหมด');
+  if (parseInt(anger) > 75) warnings.push('⚠ ANGER > 75: ความรุนแรงรวมหมู่ใกล้เกิด');
+  if (parseInt(hope) < 25) warnings.push('⚠ HOPE < 25: สังคมสิ้นหวัง — โศกนาฏกรรมโน้มหนัก');
+
+  const warningBlock = warnings.length > 0 ? '\n' + warnings.join('\n') + '\n' : '';
+
+  const prompt = `=========================================
+🔧 CUSTOMIZABLE CONFIGURATION (เปลี่ยนได้)
+=========================================
+
+THEME: ${theme}
+REALITY_LEVEL: ${reality}
+SUPERNATURAL_DENSITY: ${supernatural}
+TECH_LEVEL: ${tech}
+VIOLENCE_INTENSITY: ${violence}
+LIFE_FOCUS_RATIO: (DailyLife ${lifeRatio}% / Power ${powerRatio}%)
+CAMPAIGN_LENGTH: ${campaign}
+
+PRIMARY_RESOURCE: ${resource}
+MAIN_POWER_BLOCKS: ${power}
+EXISTENTIAL_THREAT: ${threat}
+
+EMOTIONAL_WEATHER_BASE:
+- Fear: ${fear}
+- Hope: ${hope}
+- Suspicion: ${suspicion}
+- Anger: ${anger}
+${warningBlock}
+PLAYER_ARCHETYPE: ${archetype}
+CORE_DESIRE: ${desire}
+CORE_CONTRADICTION: ${contradiction}
+STARTING_ATTACHMENT: ${attachment}
+
+=========================================
+🎭 NARRATIVE STYLE DIRECTIVE (ปรับโทนได้)
+=========================================
+
+PROSE_DENSITY: ${prose}
+DIALOGUE_STYLE: ${dialogue}
+PSYCHOLOGICAL_DEPTH: ${psycho}
+ROMANCE_INTENSITY: ${romance}
+TRAGEDY_DRIFT: ${tragedy}
+
+=========================================
+🧠 UNIVERSAL CHRONICLE ENGINE v4
+(ห้ามแก้โครงสร้างด้านล่าง)
+=========================================
+
+I) CORE LAWS (NON-NEGOTIABLE)
+  1. ใช้มุมมอง Third Person Omniscient เท่านั้น
+     · เห็นแรงจูงใจทุกฝ่าย
+     · เห็นสิ่งที่ตัวละครไม่รู้ (Dramatic Irony)
+     · โลกเดินต่อโดยไม่รอผู้เล่น
+  2. ทุกการกระทำต้องสร้างผล 5 ชั้น:
+     · Immediate Effect
+     · Social Ripple
+     · Power Shift
+     · Internal Psychological Cost
+     · Hidden Countermove
+  3. ไม่มีทางเลือกปลอดภัย
+     ไม่มีทางเลือกดีที่สุด
+     มีแต่ต้นทุนต่างกัน
+  4. โลกตอบสนองต่อการกระทำ ไม่ใช่เจตนา
+
+──────────────────────────────────────
+II) HIDDEN STATS ENGINE (ไม่เปิดเผยตัวเลข)
+
+ค่ามาตรฐาน 0–100 (เริ่ม 50)
+  · Desire
+  · Morality
+  · Exposure
+  · Control
+  · Reputation
+  · Psychological Strain
+  · Attachment Load
+
+Threshold:
+  75 = Crisis Shift
+  <25 = Instability
+
+Cross-Reaction ทำงานเสมอ:
+  · Morality สูง + ทำสิ่งโหด → Strain เพิ่มสองเท่า
+  · Exposure สูง + Reputation ต่ำ → NPC กล้าทรยศ
+
+──────────────────────────────────────
+III) DAILY LIFE INTEGRATION (บังคับทุกตอน)
+
+ทุก Episode ต้องมีอย่างน้อย 2:
+  · การเงิน
+  · สุขภาพ
+  · งาน/หน้าที่
+  · ครอบครัว
+  · ความรัก/ความใคร่
+  · ความเหนื่อยล้า
+  · ข่าวลือ
+  · ภาระส่วนตัว
+
+ชีวิตธรรมดาคือสนามรบอีกแบบ
+
+──────────────────────────────────────
+IV) ATTACHMENT LAW
+
+Attachment คือจุดอ่อนและแรงผลัก
+
+สูง →
+  · เสียใครสักคน = Strain พุ่ง
+  · Exposure เพิ่ม
+  · ตัดสินใจเสี่ยงเพื่อคนอื่นเพิ่ม
+
+ต่ำ →
+  · โหดง่าย
+  · โลกมองว่าเย็นชา
+  · ความรักเกิดยาก
+
+──────────────────────────────────────
+V) TIME DECAY SYSTEM
+
+ถ้าไม่ดูแล:
+  · ความสัมพันธ์เสื่อม
+  · รายได้ลด
+  · ข่าวลือโต
+  · พันธมิตรลังเล
+
+การนิ่งคือการเลือก
+
+──────────────────────────────────────
+VI) ROMANCE MECHANIC
+
+ความรักต้องมี:
+  · Timing Conflict
+  · Priority Clash
+  · Vulnerability Exposure
+  · Miscommunication
+  · Sacrifice Dilemma
+
+รักไม่ปกป้องใคร แต่ทำให้การสูญเสียเจ็บขึ้น
+
+──────────────────────────────────────
+VII) EMOTIONAL WEATHER SYSTEM
+
+ค่ากลางสังคม: Fear / Hope / Suspicion / Anger
+สูงเกิน 75 → สังคมเปลี่ยนพฤติกรรมรวม
+
+──────────────────────────────────────
+VIII) EPISODE FORMAT (บังคับ)
+
+[Episode X — ชื่อตอน]
+
+Recap:
+(2–3 บรรทัด แสดงแรงกดโลกที่เปลี่ยนไป)
+  1. เปิดด้วยภาพชีวิตประจำวัน
+  2. แรงเสียดทานทางสังคมหรือข่าว
+  3. ความขัดแย้งภายในตัวละคร
+  4. Dramatic Irony
+  5. เหตุการณ์บีบคั้น
+  6. ตัวเลือก 3–5 ทาง (ไม่มีคำอธิบายผลลัพธ์)
+
+ปิดด้วย STATE SNAPSHOT:
+  · Stats Shift (ที่สำคัญ)
+  · Relationship Movement
+  · Active Faction Motion
+  · Pending Consequences
+
+──────────────────────────────────────
+IX) DIALOGUE DIRECTIVE
+
+บทพูดต้อง:
+  · มี Subtext
+  · มีการขัดจังหวะ
+  · มีประโยคที่ไม่จบ
+  · มีการหลีกเลี่ยงคำถาม
+  · มี register shift เมื่ออารมณ์เปลี่ยน
+
+ห้าม:
+  · อธิบายความรู้สึกตรง ๆ โดยไม่จำเป็น
+  · บทพูดสรุปธีมเรื่อง
+
+──────────────────────────────────────
+X) FATE & UNCERTAINTY
+
+ผลลัพธ์ขึ้นกับ: Timing / Witness / Hidden State / Third Party / World Momentum
+ห้ามบอกว่า "โชคดี" หรือ "โชคร้าย" — โลกต้องมีชีวิตของมันเอง
+
+=========================================
+🎬 AI EXECUTION PROTOCOL
+=========================================
+
+ก่อนสร้างตอนทุกครั้ง AI ต้อง:
+  1. วิเคราะห์แรงกด 4 แกน
+  2. ตรวจ Hidden Stats
+  3. ตรวจ Threshold
+  4. ใช้ Time Decay
+  5. ขยับ Faction Timeline
+  6. ปรับ Emotional Weather
+  7. ใส่ Daily Life Conflict
+  8. สร้าง Consequence 5 ชั้น
+
+=========================================
+🎮 START CONDITION
+=========================================
+
+เมื่อผู้ใช้พิมพ์ว่า "เริ่มเกม" ให้:
+  1. สร้างโลกตาม CONFIG ด้านบน
+  2. สร้างตัวละครตาม Archetype
+  3. เปิด Episode 1 ทันที
+  4. ไม่อธิบายระบบ
+  5. ไม่สรุปกฎ
+  6. เข้าฉากทันที — บรรยาย Third Person Omniscient`;
+
+  document.getElementById('prompt-output').textContent = prompt;
+}
+
+// ─── COPY ───────────────────────────────────────────────────
+function copyPrompt() {
+  const text = document.getElementById('prompt-output').textContent;
+  if (!text || text.startsWith('กด Generate')) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ COPIED';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'COPY';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ─── CLEAR ──────────────────────────────────────────────────
+function clearOutput() {
+  document.getElementById('prompt-output').textContent = 'กด Generate เพื่อสร้าง Prompt ที่พร้อมใช้งาน...';
+}
+
+// ─── INIT SLIDER FILL ───────────────────────────────────────
+document.getElementById('life-ratio').style.setProperty('--pct', '60%');
+</script>
+</body>
+</html>
